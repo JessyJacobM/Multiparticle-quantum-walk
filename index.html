@@ -1,0 +1,568 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hxx Quantum Walk (Subspace Simulation)</title>
+    <script src="https://cdn.jsdelivr.net/pyodide/v0.25.0/full/pyodide.js"></script>
+    <script src="https://d3js.org/d3.v6.min.js"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background-color: #f4f4f9;
+        }
+        h1 { margin-bottom: 10px; }
+        .controls {
+            margin-bottom: 20px;
+            padding: 15px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            justify-content: center;
+            align-items: center;
+        }
+        button {
+            padding: 8px 16px;
+            cursor: pointer;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            transition: background 0.3s;
+        }
+        button:hover { background-color: #0056b3; }
+        button.active { background-color: #004494; border: 2px solid #002a5c; }
+        button.stop { background-color: #dc3545; }
+        button.stop:hover { background-color: #a71d2a; }
+
+        .main-container {
+            display: flex;
+            gap: 20px;
+            width: 100%;
+            max-width: 1200px;
+            justify-content: center;
+        }
+        
+        /* Left: Graph Creator */
+        .panel {
+            background: white;
+            padding: 10px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        #graph {
+            width: 500px;
+            height: 500px;
+            border: 1px solid #eee;
+            position: relative;
+            cursor: crosshair;
+            background: #fafafa;
+            overflow: hidden;
+        }
+        
+        /* Right: State Visualization */
+        #state-viz {
+            width: 500px;
+            height: 500px;
+            border: 1px solid #eee;
+            overflow-y: auto;
+            padding: 10px;
+            background: #fafafa;
+        }
+        .bar-container {
+            display: flex;
+            align-items: center;
+            margin-bottom: 8px;
+            font-family: monospace;
+            font-size: 14px;
+        }
+        .bar-label {
+            width: 80px;
+            text-align: right;
+            margin-right: 10px;
+        }
+        .bar-bg {
+            flex-grow: 1;
+            background: #eee;
+            height: 20px;
+            border-radius: 4px;
+            overflow: hidden;
+            position: relative;
+        }
+        .bar-fill {
+            height: 100%;
+            background-color: #4CAF50;
+            width: 0%;
+            transition: width 0.1s linear;
+        }
+        .bar-value {
+            position: absolute;
+            right: 5px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 10px;
+            color: #333;
+        }
+
+        /* Node/Edge Styles */
+        .node {
+            position: absolute;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            background: white;
+            border: 2px solid #333;
+            font-weight: bold;
+            z-index: 2;
+            cursor: pointer;
+            user-select: none;
+        }
+        .edge {
+            position: absolute;
+            height: 4px;
+            background-color: #333;
+            transform-origin: 0% 50%;
+            z-index: 1;
+            cursor: pointer;
+        }
+        .edge:hover { background-color: red; }
+        
+        /* Inputs */
+        .input-group {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            border-left: 1px solid #ccc;
+            padding-left: 10px;
+        }
+        select, input[type="number"] {
+            padding: 5px;
+            border-radius: 4px;
+            border: 1px solid #ccc;
+        }
+    </style>
+</head>
+<body>
+    <h1>Hxx Quantum Walk Simulation</h1>
+    
+    <div class="controls">
+        <button onclick="setMode('addNode')" id="btn-addNode">Add Node</button>
+        <button onclick="setMode('addEdge')" id="btn-addEdge">Add Edge</button>
+        <button onclick="setMode('delete')" id="btn-delete">Delete</button>
+        <button onclick="resetGraph()">Reset</button>
+        
+        <div class="input-group">
+            <label>Particles (Excitations):</label>
+            <input type="number" id="particleCount" value="1" min="1" max="5" style="width: 50px;" onchange="updateBasisSelector()">
+        </div>
+
+        <div class="input-group">
+            <label>Initial State:</label>
+            <select id="initialStateSelect"></select>
+        </div>
+
+        <div class="input-group" style="border:none">
+            <button onclick="runQuantumWalk()">▶ Run</button>
+            <button class="stop" onclick="stopQuantumWalk()">■ Stop</button>
+        </div>
+    </div>
+
+    <div class="main-container">
+        <div class="panel">
+            <h3>Spatial Graph (Topology)</h3>
+            <div id="graph" onclick="handleCanvasClick(event)"></div>
+            <div>Nodes: <span id="node-count">0</span> | Edges: <span id="edge-count">0</span></div>
+        </div>
+        
+        <div class="panel">
+            <h3>State Space Probabilities (Hilbert Space)</h3>
+            <div id="state-viz">
+                <p style="text-align:center; color: #666;">Build graph and click Run to see states.</p>
+            </div>
+            <div id="time-display">Time: 0.0</div>
+        </div>
+    </div>
+
+    <script>
+        let nodes = [];
+        let edges = []; // Format: [id1, id2, weight]
+        let mode = 'addNode';
+        let selectedForEdge = [];
+        
+        // Simulation Globals
+        let running = false;
+        let pyodide = null;
+        let simInterval = null;
+        let basisStates = []; // Stores strings like "010"
+
+        // --- Graph Interaction ---
+        function setMode(newMode) {
+            mode = newMode;
+            selectedForEdge = [];
+            document.querySelectorAll('.controls button').forEach(b => b.classList.remove('active'));
+            let btn = document.getElementById(`btn-${newMode}`);
+            if(btn) btn.classList.add('active');
+            renderGraph();
+        }
+
+        function handleCanvasClick(event) {
+            if (mode !== 'addNode') return;
+            const rect = document.getElementById("graph").getBoundingClientRect();
+            const x = event.clientX - rect.left;
+            const y = event.clientY - rect.top;
+            
+            // Prevent placing nodes too close or out of bounds
+            if (x < 20 || y < 20 || x > 480 || y > 480) return;
+            
+            const newNode = { id: nodes.length, x, y };
+            nodes.push(newNode);
+            renderGraph();
+            updateBasisSelector();
+        }
+
+        function nodeClicked(e, id) {
+            e.stopPropagation(); // Prevent canvas click
+            if (mode === 'addEdge') {
+                selectedForEdge.push(id);
+                // Visual feedback for selection
+                document.getElementById(`node-${id}`).style.borderColor = "blue";
+                
+                if (selectedForEdge.length === 2) {
+                    const [u, v] = selectedForEdge;
+                    if (u !== v && !edges.some(edge => (edge[0]===u && edge[1]===v) || (edge[0]===v && edge[1]===u))) {
+                        // Default weight 1 for now, can extend to weighted later
+                        edges.push([u, v, 1.0]); 
+                    }
+                    selectedForEdge = [];
+                    renderGraph();
+                }
+            } else if (mode === 'delete') {
+                // Remove node and connected edges
+                nodes = nodes.filter(n => n.id !== id);
+                edges = edges.filter(e => e[0] !== id && e[1] !== id);
+                // Re-index nodes to keep 0..N-1 sequence for matrix logic
+                reindexGraph();
+                renderGraph();
+                updateBasisSelector();
+            }
+        }
+
+        function edgeClicked(e, index) {
+            e.stopPropagation();
+            if (mode === 'delete') {
+                edges.splice(index, 1);
+                renderGraph();
+            }
+        }
+
+        function reindexGraph() {
+            // Map old IDs to new 0..N-1 IDs
+            const idMap = {};
+            nodes.forEach((n, i) => {
+                idMap[n.id] = i;
+                n.id = i;
+            });
+            // Update edges
+            edges = edges.map(e => [idMap[e[0]], idMap[e[1]], e[2]]);
+        }
+
+        function renderGraph() {
+            const container = document.getElementById("graph");
+            container.innerHTML = "";
+            document.getElementById("node-count").innerText = nodes.length;
+            document.getElementById("edge-count").innerText = edges.length;
+
+            // Draw Edges
+            edges.forEach((edge, index) => {
+                const n1 = nodes.find(n => n.id === edge[0]);
+                const n2 = nodes.find(n => n.id === edge[1]);
+                if (!n1 || !n2) return;
+
+                const dx = n2.x - n1.x;
+                const dy = n2.y - n1.y;
+                const length = Math.sqrt(dx*dx + dy*dy);
+                const angle = Math.atan2(dy, dx) * 180 / Math.PI;
+
+                const el = document.createElement("div");
+                el.className = "edge";
+                el.style.width = `${length}px`;
+                el.style.left = `${n1.x + 20}px`; // +20 is half node size
+                el.style.top = `${n1.y + 20}px`;
+                el.style.transform = `rotate(${angle}deg)`;
+                el.onclick = (e) => edgeClicked(e, index);
+                
+                // Optional: Show weight label
+                if(edge[2] !== 1) {
+                    el.title = `Weight: ${edge[2]}`;
+                }
+                
+                container.appendChild(el);
+            });
+
+            // Draw Nodes
+            nodes.forEach(node => {
+                const el = document.createElement("div");
+                el.className = "node";
+                el.id = `node-${node.id}`;
+                el.style.left = `${node.x}px`;
+                el.style.top = `${node.y}px`;
+                el.innerText = node.id;
+                el.onclick = (e) => nodeClicked(e, node.id);
+                
+                // Highlight if selected for edge
+                if (selectedForEdge.includes(node.id)) {
+                    el.style.borderColor = "blue";
+                    el.style.backgroundColor = "#eef";
+                }
+
+                container.appendChild(el);
+            });
+        }
+
+        function resetGraph() {
+            nodes = [];
+            edges = [];
+            running = false;
+            renderGraph();
+            updateBasisSelector();
+            document.getElementById("state-viz").innerHTML = '<p style="text-align:center; color: #666;">Graph cleared.</p>';
+        }
+
+        // --- Simulation Logic ---
+
+        // Helper: Generate Combinations for Basis States
+        function getCombinations(n, k) {
+            // Returns list of arrays, e.g., [1,0,0]
+            if (k === 0) return [Array(n).fill(0)];
+            if (n === 0) return [];
+            if (n === k) return [Array(n).fill(1)];
+
+            const withFirst = getCombinations(n - 1, k - 1).map(c => [1, ...c]);
+            const withoutFirst = getCombinations(n - 1, k).map(c => [0, ...c]);
+            return [...withFirst, ...withoutFirst].sort().reverse(); // Sort so 100 comes before 001 usually
+        }
+
+        function updateBasisSelector() {
+            const n = nodes.length;
+            const k = parseInt(document.getElementById("particleCount").value);
+            const select = document.getElementById("initialStateSelect");
+            select.innerHTML = "";
+
+            if (n === 0) return;
+            if (k > n) {
+                // Invalid state
+                const opt = document.createElement("option");
+                opt.text = "Particles > Nodes!";
+                select.add(opt);
+                return;
+            }
+
+            // Generate Basis States (Bitstrings)
+            // We use simple recursion or just generate binary strings and filter
+            basisStates = [];
+            // Generating all 2^N is expensive for large N, but N is small here (UI limit).
+            // Better: recursive generation of fixed Hamming weight.
+            const rawCombs = getCombinations(n, k);
+            
+            rawCombs.forEach((comb, idx) => {
+                const bitString = comb.join(""); // e.g. "101"
+                basisStates.push(bitString);
+                const opt = document.createElement("option");
+                opt.value = idx;
+                opt.text = `|${bitString}⟩`;
+                select.add(opt);
+            });
+        }
+
+        async function loadPyodideIfNeeded() {
+            if (!pyodide) {
+                pyodide = await loadPyodide();
+                await pyodide.loadPackage(["numpy", "scipy"]);
+            }
+            return pyodide;
+        }
+
+        async function runQuantumWalk() {
+            if (nodes.length === 0) return alert("Please add nodes first.");
+            if (running) return; // Prevent double click
+
+            const py = await loadPyodideIfNeeded();
+            
+            const n = nodes.length;
+            const k = parseInt(document.getElementById("particleCount").value);
+            const startIdx = parseInt(document.getElementById("initialStateSelect").value);
+            
+            // Prepare Data for Python
+            // We pass the adjacency matrix
+            let adj = Array(n).fill().map(() => Array(n).fill(0));
+            edges.forEach(e => {
+                adj[e[0]][e[1]] = e[2];
+                adj[e[1]][e[0]] = e[2]; // Undirected
+            });
+
+            const pythonCode = `
+import numpy as np
+from scipy.linalg import expm
+import itertools
+import json
+
+# 1. Setup Inputs
+adj = np.array(${JSON.stringify(adj)})
+N = ${n}
+k = ${k}
+start_idx = ${startIdx}
+
+# 2. Generate Basis States (Fixed Hamming Weight k)
+# We use itertools to get positions of 1s
+# e.g. for N=3, k=1 -> (0,), (1,), (2,)
+# We need to ensure we generate them in the SAME order as JavaScript
+# JS getCombinations (recursive) usually produces lex order.
+# To be safe, let's regenerate bitstrings and sort them reverse (110, 101, 011) to match typically.
+states = []
+for bits in itertools.product([0, 1], repeat=N):
+    if sum(bits) == k:
+        states.append(bits)
+
+# Sort descending (e.g. (1,0) before (0,1))
+states.sort(reverse=True)
+dim = len(states)
+
+# Map state tuple to index
+state_to_idx = {s: i for i, s in enumerate(states)}
+
+# 3. Construct Hxx Hamiltonian
+H = np.zeros((dim, dim), dtype=complex)
+
+# Get edges list
+graph_edges = []
+rows, cols = np.nonzero(np.triu(adj))
+for r, c in zip(rows, cols):
+    graph_edges.append((r, c, adj[r, c]))
+
+for i, s in enumerate(states):
+    s_list = list(s)
+    
+    # Apply XX terms (hopping)
+    for u, v, w in graph_edges:
+        # Hopping is possible if one site is 0 and other is 1
+        if s[u] != s[v]:
+            # Create new state by swapping
+            new_s_list = list(s)
+            new_s_list[u], new_s_list[v] = new_s_list[v], new_s_list[u]
+            new_s = tuple(new_s_list)
+            
+            j = state_to_idx[new_s]
+            
+            # Add term to Hamiltonian. 
+            # Standard H_xx = sum J (X_i X_j + Y_i Y_j). 
+            # This maps |10> to |01> with amplitude 2 (if unscaled) or 1 (if scaled).
+            # We assume the user wants the weight w to be the hopping amplitude.
+            H[i, j] = w
+            H[j, i] = w # Hermitian
+
+# 4. Initial State
+psi0 = np.zeros(dim)
+psi0[start_idx] = 1.0
+
+# 5. Evolution Function
+def get_probs(t):
+    U = expm(-1j * H * t)
+    psi_t = U @ psi0
+    return list(np.abs(psi_t)**2)
+
+# Return the list of state strings for verification
+json.dumps([[''.join(map(str, s)) for s in states]])
+            `;
+
+            // Initialize Python env
+            const stateListJson = await py.runPythonAsync(pythonCode);
+            const pyStateList = JSON.parse(stateListJson);
+            
+            // Verify JS and Python bases match (sanity check)
+            console.log("Python Basis:", pyStateList);
+            console.log("JS Basis:", basisStates);
+
+            // Start Animation Loop
+            running = true;
+            let time = 0;
+            const dt = 0.1;
+
+            async function step() {
+                if (!running) return;
+                
+                // Call Python to get probs at time t
+                // Note: calling expm every frame is slow for large matrices, 
+                // but fine for small demos. For optimization, diagonalize H once.
+                const probs = await py.runPythonAsync(`json.dumps(get_probs(${time}))`);
+                const data = JSON.parse(probs);
+                
+                renderStateViz(data);
+                document.getElementById("time-display").innerText = `Time: ${time.toFixed(1)}`;
+                
+                time += dt;
+                if(running) requestAnimationFrame(step); // Use animation frame for smoother UI
+            }
+            step();
+        }
+
+        function stopQuantumWalk() {
+            running = false;
+        }
+
+        function renderStateViz(probabilities) {
+            const container = document.getElementById("state-viz");
+            container.innerHTML = "";
+            
+            basisStates.forEach((stateLabel, idx) => {
+                const p = probabilities[idx];
+                const pct = (p * 100).toFixed(1);
+                
+                const row = document.createElement("div");
+                row.className = "bar-container";
+                
+                const label = document.createElement("div");
+                label.className = "bar-label";
+                label.innerText = `|${stateLabel}⟩`;
+                
+                const bg = document.createElement("div");
+                bg.className = "bar-bg";
+                
+                const fill = document.createElement("div");
+                fill.className = "bar-fill";
+                fill.style.width = `${pct}%`;
+                // Color ramp: Green for high prob, Grey for low
+                fill.style.backgroundColor = `rgba(0, 128, 0, ${0.3 + p*0.7})`;
+
+                const val = document.createElement("div");
+                val.className = "bar-value";
+                val.innerText = p.toFixed(3);
+                
+                bg.appendChild(fill);
+                bg.appendChild(val);
+                row.appendChild(label);
+                row.appendChild(bg);
+                container.appendChild(row);
+            });
+        }
+        
+        // Init
+        setMode('addNode');
+        updateBasisSelector();
+
+    </script>
+</body>
+</html>
