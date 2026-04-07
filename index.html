@@ -497,7 +497,7 @@ term3 = Y0 @ get_hop(1, 3)
 term4 = Z0 @ get_hop2(1, 2)
 term5 = X0 @ get_hop2(2, 3)
 term6 = Y0 @ get_hop2(1, 3)
-H = term4 + term5 + term6
+H = term4 + term5 + term6 +term1+ term2 + term3
 ${getStateBuilderCode("16")}
 `;
             } else if (SimulationType === "Hamiltonian3") {
@@ -645,7 +645,7 @@ term3 = Y0 @ get_hop(1, 3)
 term4 = Z0 @ get_hop2(1, 2)
 term5 = X0 @ get_hop2(2, 3)
 term6 = Y0 @ get_hop2(1, 3)
-H = term4 + term5 + term6
+H = term4 + term5 + term6 +term1 + term2 +term3
 ${getStateBuilderCode("16")}
 `;
             } else if (SimulationType === "Hamiltonian3") {
