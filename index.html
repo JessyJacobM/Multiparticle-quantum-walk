@@ -88,8 +88,9 @@
         <div class="group">
             <button class="preset" onclick="load4QubitPreset()">4-Qubit Star</button>
             <button class="preset" onclick="load3QubitPreset()">3-Qubit XY Cycle</button>
-            <button class="preset" onclick="loadCustomChain()">Linear Spin Chain</button>
-            <button class="preset" onclick="loadCustomPentagon()">Chiral graph</button>
+            <button class="preset" onclick="loadCustomChain()">Linear Spin Chain P_n</button>
+            <button class="preset" onclick="loadChiralGhostTrick()">Chiral Ghost Trick</button>
+            <button class="preset" onclick="loadCirculantGraph()">Oriented Cycle C_n</button>
         </div>
 
         <div class="group">
@@ -116,6 +117,9 @@
         <div id="TimeLabel" style="position: absolute; top: 10px; right: 10px; font-size: 16px; font-weight: bold;">t: 0.0</div>
     </div>
     
+    <div id="MathDisplay" style="display:none; width: 100%; max-width: 800px; margin: 20px auto; background: white; padding: 15px; border: 1px solid #ccc; border-radius: 4px; overflow-x: auto; text-align: left;">
+    </div>
+
     <div id="chartContainer" style="display:none; width: 100%; max-width: 800px; margin: 20px auto; background: white; padding: 15px; border: 1px solid #ccc; border-radius: 4px;">
         <canvas id="probChart" width="800" height="400"></canvas>
     </div>
@@ -134,7 +138,6 @@
         let timestep = 0;
         let AdjMatrix = [];
         let SimulationType = "Generic"; 
-        let currentQubits = 3; 
 
         // Color Scale (White to Bright Green)
         const ColorScale = d3.scaleSequential(d3.interpolateViridis).domain([0, 1]); 
@@ -168,6 +171,7 @@
             render();
             updateStatus("Canvas cleared.");
             document.getElementById("chartContainer").style.display = "none"; 
+            document.getElementById("MathDisplay").style.display = "none"; 
         }
 
         function toggleMatrix() {
@@ -175,90 +179,10 @@
             el.style.display = el.style.display === "none" ? "block" : "none";
         }
 
-        function load4QubitPreset() {
-            reset();
-            SimulationType = "Hamiltonian4"; 
-            
-            const startX = 200, startY = 100, gap = 100;
-            for (let i = 0; i < 16; i++) {
-                let row = Math.floor(i / 4);
-                let col = i % 4;
-                nodes.push({ 
-                    id: i, 
-                    x: startX + (col * gap), 
-                    y: startY + (row * gap),
-                    label: i.toString(2).padStart(4, '0')
-                });
-            }
-            StartNodes = []; 
-            render();
-            setMode('SetStart'); 
-            alert("Loaded 4-Qubit System.\nPLEASE CLICK ONE OR MORE NODES to select the Start State(s).");
-            updateStatus("Mode: 4-Qubit. Select Start Node(s).");
-        }
-
-        function load3QubitPreset() {
-            reset();
-            SimulationType = "Hamiltonian3"; 
-            
-            const centerX = 400, centerY = 300, radius = 200;
-            const numStates = 8; 
-
-            for (let i = 0; i < numStates; i++) {
-                let angle = (i / numStates) * 2 * Math.PI - (Math.PI / 2);
-                nodes.push({ 
-                    id: i, 
-                    x: centerX + radius * Math.cos(angle) - 27, 
-                    y: centerY + radius * Math.sin(angle) - 27,
-                    label: i.toString(2).padStart(3, '0')
-                });
-            }
-            StartNodes = []; 
-            render();
-            setMode('SetStart'); 
-            alert("Loaded 3-Qubit XY Cycle.\nPLEASE CLICK ONE OR MORE NODES to select the Start State(s).");
-            updateStatus("Mode: 3-Qubit XY. Select Start Node(s).");
-        }
-
-        function loadCustomChain() {
-            let n_str = prompt("Enter number of nodes (qubits n):", "3");
-            if(!n_str) return;
-            let n = parseInt(n_str);
-            if(isNaN(n) || n < 1 || n > 6) {
-                alert("Please enter a number between 1 and 6 to ensure performance.");
-                return;
-            }
-
-            reset();
-            currentQubits = n;
-            SimulationType = "HamiltonianChain";
-            
-            let totalStates = Math.pow(2, n);
-            let cols = Math.ceil(Math.sqrt(totalStates));
-            let rows = Math.ceil(totalStates / cols);
-            
-            let startX = 100, startY = 80, gapX = 100, gapY = 80;
-            if(n >= 5) { gapX = 70; gapY = 60; startX = 50; } 
-
-            for(let i=0; i<totalStates; i++) {
-                let r = Math.floor(i / cols);
-                let c = i % cols;
-                nodes.push({
-                    id: i,
-                    x: startX + (c * gapX),
-                    y: startY + (r * gapY),
-                    label: i.toString(2).padStart(n, '0')
-                });
-            }
-            
-            StartNodes = [];
-            render();
-            setMode('SetStart');
-            alert(`Generated Linear Chain System for n=${n}.\nTerms: XX + YY interactions and Z fields.\n\nPLEASE CLICK ONE OR MORE NODES to set Start State(s).`);
-            updateStatus(`Mode: ${n}-Qubit Chain. Select Start Node(s).`);
-        }
-
-        function loadCustomPentagon() {
+        function load4QubitPreset() { reset(); SimulationType = "Hamiltonian4"; const startX = 200, startY = 100, gap = 100; for (let i = 0; i < 16; i++) { let row = Math.floor(i / 4); let col = i % 4; nodes.push({ id: i, x: startX + (col * gap), y: startY + (row * gap), label: i.toString(2).padStart(4, '0') }); } StartNodes = []; render(); setMode('SetStart'); alert("Loaded 4-Qubit System.\nPLEASE CLICK ONE OR MORE NODES to select the Start State(s)."); updateStatus("Mode: 4-Qubit. Select Start Node(s)."); }
+        function load3QubitPreset() { reset(); SimulationType = "Hamiltonian3"; const centerX = 400, centerY = 300, radius = 200; const numStates = 8; for (let i = 0; i < numStates; i++) { let angle = (i / numStates) * 2 * Math.PI - (Math.PI / 2); nodes.push({ id: i, x: centerX + radius * Math.cos(angle) - 27, y: centerY + radius * Math.sin(angle) - 27, label: i.toString(2).padStart(3, '0') }); } StartNodes = []; render(); setMode('SetStart'); alert("Loaded 3-Qubit XY Cycle.\nPLEASE CLICK ONE OR MORE NODES to select the Start State(s)."); updateStatus("Mode: 3-Qubit XY. Select Start Node(s)."); }
+        
+        function loadChiralGhostTrick() {
             reset();
             SimulationType = "Generic"; 
             
@@ -293,6 +217,223 @@
             setMode('SetStart'); 
             alert("Loaded Custom 6-Node Pentagon.\nPLEASE CLICK ONE OR MORE NODES to select the Start State(s).");
             updateStatus("Mode: Custom Graph. Select Start Node(s).");
+        }
+
+        // ==========================================
+        // FEATURE: LINEAR SPIN CHAIN (P_n)
+        // ==========================================
+        function loadCustomChain() {
+            let n_str = prompt("Enter number of nodes N for Linear Chain:", "5");
+            if(!n_str) return;
+            let n = parseInt(n_str);
+            if(isNaN(n) || n < 2) {
+                alert("Please enter a valid number >= 2.");
+                return;
+            }
+
+            reset();
+            SimulationType = "Generic"; 
+            
+            let startX = 50;
+            let startY = 300;
+            let gapX = 700 / Math.max(1, n - 1);
+
+            // Generate N nodes in a straight line
+            for(let i = 0; i < n; i++) {
+                nodes.push({
+                    id: i,
+                    x: startX + (i * gapX) - 27,
+                    y: startY - 27,
+                    label: i.toString()
+                });
+            }
+
+            // Generate Path Graph Edges (weight 1)
+            for(let i = 0; i < n - 1; i++) {
+                edges.push([i, i + 1, '1']);
+            }
+
+            StartNodes = [];
+            render();
+            setMode('SetStart');
+
+            // Trigger Python math calculation for Path Graph
+            calculateChainMath(n);
+        }
+
+        async function calculateChainMath(n) {
+            updateStatus("Calculating Eigenvalues and Average Mixing Matrix...");
+            if (!window.pyodide) window.pyodide = await loadPyodide();
+            await pyodide.loadPackage(["numpy", "scipy"]);
+
+            const pyCode = `
+import numpy as np
+import scipy.linalg
+import json
+
+n = ${n}
+
+# Build Adjacency matrix for Path graph P_n
+H = np.zeros((n, n), dtype=float)
+for i in range(n-1):
+    H[i, i+1] = 1.0
+    H[i+1, i] = 1.0
+
+# Calculate Eigenvalues and Eigenvectors (using eigh for Hermitian/Symmetric matrices)
+evals, evecs = np.linalg.eigh(H)
+
+# Group by unique eigenvalues to handle any potential degeneracies
+rounded_evals = np.round(evals, 5)
+unique_evals = np.unique(rounded_evals)
+
+M_avg = np.zeros((n, n), dtype=float)
+
+for val in unique_evals:
+    indices = np.where(rounded_evals == val)[0]
+    E_r = np.zeros((n, n), dtype=complex)
+    
+    # Projection matrix E_r is the sum of outer products of degenerate eigenvectors
+    for k in indices:
+        v_k = evecs[:, k].reshape(n, 1)
+        E_r += v_k @ v_k.conj().T
+    
+    # Add entry-wise product of E_r with its complex conjugate
+    M_avg += np.abs(E_r)**2
+
+evals_out = [round(x, 4) for x in unique_evals.tolist()]
+m_avg_out = np.round(M_avg, 4).tolist()
+
+json.dumps({
+    "eigenvalues": evals_out,
+    "mixing_matrix": m_avg_out
+})
+`;
+            try {
+                let res = await pyodide.runPythonAsync(pyCode);
+                let data = JSON.parse(res);
+                displayMathResults(`Path P<sub>${n}</sub>`, data.eigenvalues, data.mixing_matrix);
+                updateStatus(`Mode: Path P_${n}. Select Start Node(s).`);
+                alert(`Calculated Eigen properties and Average Mixing Matrix for P_${n}! Check the panel below the graph.`);
+            } catch(e) {
+                console.error(e);
+                updateStatus("Error calculating math.");
+            }
+        }
+
+        // ==========================================
+        // FEATURE: CIRCULANT GRAPH MATH (C_n)
+        // ==========================================
+        function loadCirculantGraph() {
+            let n_str = prompt("Enter number of nodes n for Circulant Cycle C_n:", "5");
+            if(!n_str) return;
+            let n = parseInt(n_str);
+            if(isNaN(n) || n < 3) {
+                alert("Please enter a valid number >= 3.");
+                return;
+            }
+
+            reset();
+            SimulationType = "Generic"; 
+            
+            const centerX = 400;
+            const centerY = 300;
+            const radius = 180;
+            
+            for (let i = 0; i < n; i++) {
+                let angle = -Math.PI / 2 + (i * 2 * Math.PI / n);
+                nodes.push({ id: i, x: centerX + radius * Math.cos(angle) - 27, y: centerY + radius * Math.sin(angle) - 27 });
+            }
+
+            for (let i = 0; i < n; i++) { edges.push([i, (i + 1) % n, '-1j']); }
+
+            StartNodes = []; render(); setMode('SetStart'); 
+            calculateCirculantMath(n);
+        }
+
+        async function calculateCirculantMath(n) {
+            updateStatus("Calculating Eigenvalues and Average Mixing Matrix...");
+            if (!window.pyodide) window.pyodide = await loadPyodide();
+            await pyodide.loadPackage(["numpy"]);
+
+            const pyCode = `
+import numpy as np
+import json
+
+n = ${n}
+
+# 1. Fourier Transform Matrix (F)
+j_idx, k_idx = np.meshgrid(np.arange(n), np.arange(n))
+F = (1.0 / np.sqrt(n)) * np.exp(2j * np.pi * j_idx * k_idx / n)
+
+# 2. First row of Circulant Matrix
+c = np.zeros(n, dtype=complex)
+c[1] = -1j
+c[-1] = 1j
+
+# 3. Calculate Eigenvalues analytically
+eigenvalues = np.zeros(n)
+for k in range(n):
+    val = c[1] * np.exp(2j * np.pi * 1 * k / n) + c[-1] * np.exp(2j * np.pi * (n-1) * k / n)
+    eigenvalues[k] = np.real(val)
+
+rounded_evals = np.round(eigenvalues, 5)
+unique_evals = np.unique(rounded_evals)
+
+# 4. Average Mixing Matrix
+M_avg = np.zeros((n, n), dtype=float)
+
+for val in unique_evals:
+    indices = np.where(rounded_evals == val)[0]
+    E_r = np.zeros((n, n), dtype=complex)
+    
+    for k in indices:
+        v_k = F[:, k].reshape(n, 1)
+        E_r += v_k @ v_k.conj().T
+    
+    M_avg += np.abs(E_r)**2
+
+evals_out = [round(x, 4) for x in unique_evals.tolist()]
+m_avg_out = np.round(M_avg, 4).tolist()
+
+json.dumps({
+    "eigenvalues": evals_out,
+    "mixing_matrix": m_avg_out
+})
+`;
+            try {
+                let res = await pyodide.runPythonAsync(pyCode);
+                let data = JSON.parse(res);
+                displayMathResults(`Circulant Cycle C<sub>${n}</sub>`, data.eigenvalues, data.mixing_matrix);
+                updateStatus(`Mode: Oriented Cycle C_${n}. Select Start Node(s).`);
+                alert(`Calculated Eigen properties and Average Mixing Matrix for C_${n}! Check the panel below the graph.`);
+            } catch(e) {
+                console.error(e);
+                updateStatus("Error calculating math.");
+            }
+        }
+
+        // --- Shared Math Display Function ---
+        function displayMathResults(titleHtml, evals, matrix) {
+            let div = document.getElementById("MathDisplay");
+            let n = matrix.length;
+            
+            let html = `<h3 style="margin-top: 0;">${titleHtml}</h3>`;
+            html += `<p><strong>Unique Eigenvalues:</strong> ${evals.join(', ')}</p>`;
+            html += `<p><strong>Average Mixing Matrix:</strong></p>`;
+            
+            let table = `<table style="border-collapse: collapse; width: 100%; text-align: center; font-size: 13px;" border="1">`;
+            for (let r = 0; r < n; r++) {
+                table += `<tr>`;
+                for (let c = 0; c < n; c++) {
+                    let bg = (r === c) ? "#f0f8ff" : "transparent";
+                    table += `<td style="padding: 5px; background: ${bg};">${matrix[r][c].toFixed(4)}</td>`;
+                }
+                table += `</tr>`;
+            }
+            table += `</table>`;
+            
+            div.innerHTML = html + table;
+            div.style.display = "block";
         }
 
         // --- Complex Number Utilities ---
@@ -335,7 +476,7 @@
             graph.innerHTML = "";
             graph.appendChild(timeLabel);
 
-            // Draw Edges (Only for Generic Mode)
+            // Draw Edges
             edges.forEach(([u, v, w], index) => {
                 const n1 = nodes.find(n => n.id === u);
                 const n2 = nodes.find(n => n.id === v);
@@ -402,16 +543,12 @@
         function NodeClicked(id) {
             if (mode === 'SetStart' || SimulationType.startsWith("Hamiltonian")) {
                 const index = StartNodes.indexOf(id);
-                if (index > -1) {
-                    StartNodes.splice(index, 1); 
-                } else {
-                    StartNodes.push(id); 
-                }
+                if (index > -1) { StartNodes.splice(index, 1); } 
+                else { StartNodes.push(id); }
                 render();
                 updateStatus(`Start States Set to: ${StartNodes.join(', ')}`);
                 return;
             }
-
             if (mode === 'Delete') {
                 nodes = nodes.filter(n => n.id !== id);
                 edges = edges.filter(e => !e.includes(id));
@@ -422,9 +559,7 @@
                 if (SelectedNodes.length === 2) {
                     const wFlag = document.getElementById("weight_flag").checked;
                     let w = "1";
-                    if (wFlag) {
-                        w = prompt("Complex weight (e.g. 1j, 0.5):", "1") || "1";
-                    }
+                    if (wFlag) w = prompt("Complex weight (e.g. 1j, 0.5):", "1") || "1";
                     const exists = edges.some(e => (e[0]===SelectedNodes[0] && e[1]===SelectedNodes[1]) || (e[0]===SelectedNodes[1] && e[1]===SelectedNodes[0]));
                     if(!exists) edges.push([...SelectedNodes, w]);
                     SelectedNodes = [];
@@ -433,12 +568,7 @@
             }
         }
 
-        function EdgeClicked(idx) {
-            if (mode === 'Delete') {
-                edges.splice(idx, 1);
-                render();
-            }
-        }
+        function EdgeClicked(idx) { if (mode === 'Delete') { edges.splice(idx, 1); render(); } }
 
         document.getElementById("graph").addEventListener("click", (e) => {
             if (mode === 'AddNode' && SimulationType === 'Generic' && e.target.id === "graph") {
@@ -466,14 +596,10 @@ if len(start_indices) > 0:
                 alert("Please click at least one node to set the Start State(s) first.");
                 return;
             }
-            
             updateStatus("Initializing Python Environment...");
             if (!window.pyodide) window.pyodide = await loadPyodide();
             await pyodide.loadPackage(["numpy", "scipy"]);
-
-            running = true;
-            step = 0;
-            updateStatus("Running...");
+            running = true; step = 0; updateStatus("Running...");
             
             let initCode = "";
             let commonHeader = `
@@ -482,117 +608,30 @@ import scipy.linalg
 from functools import reduce
 
 def krons(*args): return reduce(np.kron, args)
-
 I = np.identity(2, dtype=complex)
 X = np.array([[0, 1], [1, 0]], dtype=complex)
 Y = np.array([[0, -1j], [1j, 0]], dtype=complex)
 Z = np.array([[1, 0], [0, -1]], dtype=complex)
 ops = {'I': I, 'X': X, 'Y': Y, 'Z': Z}
 `;
-
             if (SimulationType === "Generic") {
                 const MatrixData = generateAdjacencymatrix();
-                initCode = `
-import numpy as np
-import scipy.linalg
-H = np.array(${JSON.stringify(MatrixData)}, dtype=complex)
-${getStateBuilderCode("len(H)")}
-`;
+                initCode = `import numpy as np\nimport scipy.linalg\nH = np.array(${JSON.stringify(MatrixData)}, dtype=complex)\n${getStateBuilderCode("len(H)")}`;
             } else if (SimulationType === "Hamiltonian4") {
-                initCode = commonHeader + `
-sigma_plus = np.array([[0, 1], [0, 0]], dtype=complex) 
-sigma_minus = np.array([[0, 0], [1, 0]], dtype=complex)
-
-def get_gate_at_pos(gate, pos, size):
-    arr = []
-    for i in range(size):
-        if i == pos: arr.append(gate)
-        else: arr.append(I)
-    return krons(*arr)
-
-def get_hop(q1, q2):
-    sp1 = get_gate_at_pos(sigma_plus, q1, 4)
-    sm2 = get_gate_at_pos(sigma_minus, q2, 4)
-    sp2 = get_gate_at_pos(sigma_plus, q2, 4)
-    sm1 = get_gate_at_pos(sigma_minus, q1, 4)
-    return (sp1 @ sm2) + (sp2 @ sm1)
-
-def get_hop2(q1, q2):
-    sp1 = get_gate_at_pos(sigma_plus, q1, 4)
-    sm2 = get_gate_at_pos(sigma_minus, q2, 4)
-    sp2 = get_gate_at_pos(sigma_plus, q2, 4)
-    sm1 = get_gate_at_pos(sigma_minus, q1, 4)
-    return (sp1 @ sp2) + (sm2 @ sm1)
-
-Z0 = get_gate_at_pos(Z, 0, 4)
-X0 = get_gate_at_pos(X, 0, 4)
-Y0 = get_gate_at_pos(Y, 0, 4)
-
-term1 = Z0 @ get_hop(1, 2)
-term2 = X0 @ get_hop(2, 3)
-term3 = Y0 @ get_hop(1, 3)
-
-term4 = Z0 @ get_hop2(1, 2)
-term5 = X0 @ get_hop2(2, 3)
-term6 = Y0 @ get_hop2(1, 3)
-H = term4 + term5 + term6 +term1+ term2 + term3
-${getStateBuilderCode("16")}
-`;
+                initCode = commonHeader + `sigma_plus = np.array([[0, 1], [0, 0]], dtype=complex)\nsigma_minus = np.array([[0, 0], [1, 0]], dtype=complex)\ndef get_gate_at_pos(gate, pos, size): arr = []; [arr.append(gate) if i == pos else arr.append(I) for i in range(size)]; return krons(*arr)\ndef get_hop(q1, q2): return (get_gate_at_pos(sigma_plus, q1, 4) @ get_gate_at_pos(sigma_minus, q2, 4)) + (get_gate_at_pos(sigma_plus, q2, 4) @ get_gate_at_pos(sigma_minus, q1, 4))\ndef get_hop2(q1, q2): return (get_gate_at_pos(sigma_plus, q1, 4) @ get_gate_at_pos(sigma_plus, q2, 4)) + (get_gate_at_pos(sigma_minus, q2, 4) @ get_gate_at_pos(sigma_minus, q1, 4))\nH = (get_gate_at_pos(Z, 0, 4) @ get_hop2(1, 2)) + (get_gate_at_pos(X, 0, 4) @ get_hop2(2, 3)) + (get_gate_at_pos(Y, 0, 4) @ get_hop2(1, 3)) + (get_gate_at_pos(Z, 0, 4) @ get_hop(1, 2)) + (get_gate_at_pos(X, 0, 4) @ get_hop(2, 3)) + (get_gate_at_pos(Y, 0, 4) @ get_hop(1, 3))\n${getStateBuilderCode("16")}`;
             } else if (SimulationType === "Hamiltonian3") {
-                initCode = commonHeader + `
-terms = ['XYI', 'YXI', 'IXY','IYX','YIX','XIY','ZII','IZI','IIZ']
-coeffs = [0.5, -0.5, 0.5, -0.5, 0.5, -0.5, 1.0 , 1.0, 1.0]
-H = np.zeros((8, 8), dtype=complex)
-for term_str, coeff in zip(terms, coeffs):
-    matrices = [ops[char] for char in term_str]
-    H += coeff * krons(*matrices)
-${getStateBuilderCode("8")}
-`;
-            } else if (SimulationType === "HamiltonianChain") {
-                initCode = commonHeader + `
-n = ${currentQubits}
-dim = 2**n
-H = np.zeros((dim, dim), dtype=complex)
-
-for i in range(n - 1):
-    op_list_x = ['I'] * n
-    op_list_x[i] = 'X'
-    op_list_x[i+1] = 'X'
-    term_x = krons(*[ops[o] for o in op_list_x])
-    H += 0.5 * term_x
-    
-    op_list_y = ['I'] * n
-    op_list_y[i] = 'Y'
-    op_list_y[i+1] = 'Y'
-    term_y = krons(*[ops[o] for o in op_list_y])
-    H += 0.5 * term_y
-
-for i in range(n):
-    op_list_z = ['I'] * n
-    op_list_z[i] = 'Z'
-    term_z = krons(*[ops[o] for o in op_list_z])
-    H += 1.0 * term_z
-${getStateBuilderCode("dim")}
-`;
+                initCode = commonHeader + `terms = ['XYI', 'YXI', 'IXY','IYX','YIX','XIY','ZII','IZI','IIZ']; coeffs = [0.5, -0.5, 0.5, -0.5, 0.5, -0.5, 1.0 , 1.0, 1.0]; H = np.zeros((8, 8), dtype=complex)\nfor t, c in zip(terms, coeffs): H += c * krons(*[ops[char] for char in t])\n${getStateBuilderCode("8")}`;
             }
 
             await pyodide.runPythonAsync(initCode);
 
             async function loop() {
                 if (!running) return;
-                timestep = step * 0.0015; 
-                
-                const stepCode = `
-import json
-U = scipy.linalg.expm(-1j * H * ${timestep})
-current_psi = U @ state
-probs = np.abs(current_psi)**2
-json.dumps(probs.tolist())
-`;
+                timestep = step * 0.005; 
+                const stepCode = `import json\nU = scipy.linalg.expm(-1j * H * ${timestep})\nprobs = np.abs(U @ state)**2\njson.dumps(probs.tolist())`;
                 try {
                     let res = await pyodide.runPythonAsync(stepCode);
-                    let probs = JSON.parse(res);
-                    render(probs);
+                    render(JSON.parse(res));
                     step++;
                     requestAnimationFrame(loop);
                 } catch (e) {
@@ -613,14 +652,8 @@ json.dumps(probs.tolist())
         let windowChartInstance = null;
 
         async function plotGraph() {
-            if (nodes.length === 0) {
-                alert("Please create nodes or load a preset first.");
-                return;
-            }
-            if (StartNodes.length === 0) {
-                alert("Please click at least one node to set the Start State(s) first.");
-                return;
-            }
+            if (nodes.length === 0) { alert("Please create nodes or load a preset first."); return; }
+            if (StartNodes.length === 0) { alert("Please click at least one node to set the Start State(s) first."); return; }
 
             let maxTimeStr = prompt("Enter the maximum time T for the plot interval:", "10");
             if (!maxTimeStr) return;
@@ -632,93 +665,15 @@ json.dumps(probs.tolist())
             await pyodide.loadPackage(["numpy", "scipy"]);
 
             let initCode = "";
-            let commonHeader = `
-import numpy as np
-import scipy.linalg
-from functools import reduce
-def krons(*args): return reduce(np.kron, args)
-I = np.identity(2, dtype=complex)
-X = np.array([[0, 1], [1, 0]], dtype=complex)
-Y = np.array([[0, -1j], [1j, 0]], dtype=complex)
-Z = np.array([[1, 0], [0, -1]], dtype=complex)
-ops = {'I': I, 'X': X, 'Y': Y, 'Z': Z}
-`;
+            let commonHeader = `import numpy as np\nimport scipy.linalg\nfrom functools import reduce\ndef krons(*args): return reduce(np.kron, args)\nI = np.identity(2, dtype=complex)\nX = np.array([[0, 1], [1, 0]], dtype=complex)\nY = np.array([[0, -1j], [1j, 0]], dtype=complex)\nZ = np.array([[1, 0], [0, -1]], dtype=complex)\nops = {'I': I, 'X': X, 'Y': Y, 'Z': Z}\n`;
 
             if (SimulationType === "Generic") {
                 const MatrixData = generateAdjacencymatrix();
-                initCode = `
-import numpy as np
-import scipy.linalg
-H = np.array(${JSON.stringify(MatrixData)}, dtype=complex)
-${getStateBuilderCode("len(H)")}
-`;
+                initCode = `import numpy as np\nimport scipy.linalg\nH = np.array(${JSON.stringify(MatrixData)}, dtype=complex)\n${getStateBuilderCode("len(H)")}`;
             } else if (SimulationType === "Hamiltonian4") {
-                initCode = commonHeader + `
-sigma_plus = np.array([[0, 1], [0, 0]], dtype=complex) 
-sigma_minus = np.array([[0, 0], [1, 0]], dtype=complex)
-def get_gate_at_pos(gate, pos, size):
-    arr = []
-    for i in range(size):
-        if i == pos: arr.append(gate)
-        else: arr.append(I)
-    return krons(*arr)
-def get_hop(q1, q2):
-    sp1 = get_gate_at_pos(sigma_plus, q1, 4)
-    sm2 = get_gate_at_pos(sigma_minus, q2, 4)
-    sp2 = get_gate_at_pos(sigma_plus, q2, 4)
-    sm1 = get_gate_at_pos(sigma_minus, q1, 4)
-    return (sp1 @ sm2) + (sp2 @ sm1)
-def get_hop2(q1, q2):
-    sp1 = get_gate_at_pos(sigma_plus, q1, 4)
-    sm2 = get_gate_at_pos(sigma_minus, q2, 4)
-    sp2 = get_gate_at_pos(sigma_plus, q2, 4)
-    sm1 = get_gate_at_pos(sigma_minus, q1, 4)
-    return (sp1 @ sp2) + (sm2 @ sm1)
-Z0 = get_gate_at_pos(Z, 0, 4)
-X0 = get_gate_at_pos(X, 0, 4)
-Y0 = get_gate_at_pos(Y, 0, 4)
-term1 = Z0 @ get_hop(1, 2)
-term2 = X0 @ get_hop(2, 3)
-term3 = Y0 @ get_hop(1, 3)
-term4 = Z0 @ get_hop2(1, 2)
-term5 = X0 @ get_hop2(2, 3)
-term6 = Y0 @ get_hop2(1, 3)
-H = term4 + term5 + term6 +term1 + term2 +term3
-${getStateBuilderCode("16")}
-`;
+                initCode = commonHeader + `sigma_plus = np.array([[0, 1], [0, 0]], dtype=complex)\nsigma_minus = np.array([[0, 0], [1, 0]], dtype=complex)\ndef get_gate_at_pos(gate, pos, size): arr = []; [arr.append(gate) if i == pos else arr.append(I) for i in range(size)]; return krons(*arr)\ndef get_hop(q1, q2): return (get_gate_at_pos(sigma_plus, q1, 4) @ get_gate_at_pos(sigma_minus, q2, 4)) + (get_gate_at_pos(sigma_plus, q2, 4) @ get_gate_at_pos(sigma_minus, q1, 4))\ndef get_hop2(q1, q2): return (get_gate_at_pos(sigma_plus, q1, 4) @ get_gate_at_pos(sigma_plus, q2, 4)) + (get_gate_at_pos(sigma_minus, q2, 4) @ get_gate_at_pos(sigma_minus, q1, 4))\nH = (get_gate_at_pos(Z, 0, 4) @ get_hop2(1, 2)) + (get_gate_at_pos(X, 0, 4) @ get_hop2(2, 3)) + (get_gate_at_pos(Y, 0, 4) @ get_hop2(1, 3)) + (get_gate_at_pos(Z, 0, 4) @ get_hop(1, 2)) + (get_gate_at_pos(X, 0, 4) @ get_hop(2, 3)) + (get_gate_at_pos(Y, 0, 4) @ get_hop(1, 3))\n${getStateBuilderCode("16")}`;
             } else if (SimulationType === "Hamiltonian3") {
-                initCode = commonHeader + `
-terms = ['XYI', 'YXI', 'IXY','IYX','YIX','XIY','ZII','IZI','IIZ']
-coeffs = [0.5, -0.5, 0.5, -0.5, 0.5, -0.5, 1.0 , 1.0, 1.0]
-H = np.zeros((8, 8), dtype=complex)
-for term_str, coeff in zip(terms, coeffs):
-    matrices = [ops[char] for char in term_str]
-    H += coeff * krons(*matrices)
-${getStateBuilderCode("8")}
-`;
-            } else if (SimulationType === "HamiltonianChain") {
-                initCode = commonHeader + `
-n = ${currentQubits}
-dim = 2**n
-H = np.zeros((dim, dim), dtype=complex)
-for i in range(n - 1):
-    op_list_x = ['I'] * n
-    op_list_x[i] = 'X'
-    op_list_x[i+1] = 'X'
-    term_x = krons(*[ops[o] for o in op_list_x])
-    H += 0.5 * term_x
-    op_list_y = ['I'] * n
-    op_list_y[i] = 'Y'
-    op_list_y[i+1] = 'Y'
-    term_y = krons(*[ops[o] for o in op_list_y])
-    H += 0.5 * term_y
-for i in range(n):
-    op_list_z = ['I'] * n
-    op_list_z[i] = 'Z'
-    term_z = krons(*[ops[o] for o in op_list_z])
-    H += 1.0 * term_z
-${getStateBuilderCode("dim")}
-`;
+                initCode = commonHeader + `terms = ['XYI', 'YXI', 'IXY','IYX','YIX','XIY','ZII','IZI','IIZ']; coeffs = [0.5, -0.5, 0.5, -0.5, 0.5, -0.5, 1.0 , 1.0, 1.0]; H = np.zeros((8, 8), dtype=complex)\nfor t, c in zip(terms, coeffs): H += c * krons(*[ops[char] for char in t])\n${getStateBuilderCode("8")}`;
             }
             await pyodide.runPythonAsync(initCode);
 
@@ -755,9 +710,7 @@ json.dumps({'time': t_vals.tolist(), 'probs': all_probs})
             document.getElementById("chartContainer").style.display = "block";
             const ctx = document.getElementById("probChart").getContext("2d");
 
-            if (windowChartInstance) {
-                windowChartInstance.destroy();
-            }
+            if (windowChartInstance) windowChartInstance.destroy();
 
             const times = data.time.map(t => t.toFixed(2));
             const datasets = [];
@@ -782,39 +735,14 @@ json.dumps({'time': t_vals.tolist(), 'probs': all_probs})
 
             windowChartInstance = new Chart(ctx, {
                 type: 'line',
-                data: {
-                    labels: times,
-                    datasets: datasets
-                },
+                data: { labels: times, datasets: datasets },
                 options: {
                     responsive: true,
-                    interaction: {
-                        mode: 'index',
-                        intersect: false,
-                    },
-                    plugins: {
-                        title: {
-                            display: true,
-                            text: 'Probability Distribution vs Time'
-                        },
-                        legend: {
-                            position: 'right',
-                            labels: { boxWidth: 12, font: { size: 10 } }
-                        }
-                    },
-                    scales: {
-                        x: {
-                            title: { display: true, text: 'Time (t)' }
-                        },
-                        y: {
-                            title: { display: true, text: 'Probability |ψ|²' },
-                            min: 0,
-                            max: 1
-                        }
-                    }
+                    interaction: { mode: 'index', intersect: false, },
+                    plugins: { title: { display: true, text: 'Probability Distribution vs Time' }, legend: { position: 'right', labels: { boxWidth: 12, font: { size: 10 } } } },
+                    scales: { x: { title: { display: true, text: 'Time (t)' } }, y: { title: { display: true, text: 'Probability |ψ|²' }, min: 0, max: 1 } }
                 }
             });
-            
             document.getElementById("chartContainer").scrollIntoView({ behavior: "smooth" });
         }
     </script>
