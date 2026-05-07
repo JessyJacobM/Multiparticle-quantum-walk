@@ -89,6 +89,7 @@
             <button class="preset" onclick="load4QubitPreset()">4-Qubit Star</button>
             <button class="preset" onclick="load3QubitPreset()">3-Qubit XY Cycle</button>
             <button class="preset" onclick="loadCustomChain()">Linear Spin Chain</button>
+            <button class="preset" onclick="loadCustomPentagon()">Chiral graph</button>
         </div>
 
         <div class="group">
@@ -125,7 +126,7 @@
         // --- Global State ---
         let nodes = [];
         let edges = [];
-        let StartNodes = []; // Modified to array for superposition
+        let StartNodes = []; 
         let SelectedNodes = [];
         let mode = 'AddNode';
         let running = false;
@@ -255,6 +256,43 @@
             setMode('SetStart');
             alert(`Generated Linear Chain System for n=${n}.\nTerms: XX + YY interactions and Z fields.\n\nPLEASE CLICK ONE OR MORE NODES to set Start State(s).`);
             updateStatus(`Mode: ${n}-Qubit Chain. Select Start Node(s).`);
+        }
+
+        function loadCustomPentagon() {
+            reset();
+            SimulationType = "Generic"; 
+            
+            const centerX = 400;
+            const centerY = 300;
+            const radius = 180;
+            
+            const angles = {
+                5: -Math.PI / 2,
+                0: -Math.PI / 2 + (2 * Math.PI / 6),                          
+                1: -Math.PI / 2 + (4 * Math.PI / 6),      
+                3: -Math.PI / 2 + (6 * Math.PI / 6),      
+                4: -Math.PI / 2 + (8 * Math.PI / 6),      
+                2: -Math.PI / 2 + (10 * Math.PI / 6)       
+            };
+
+            nodes = [5, 0, 1, 3, 4, 2].map(id => ({
+                id: id,
+                x: centerX + radius * Math.cos(angles[id]) - 27,
+                y: centerY + radius * Math.sin(angles[id]) - 27
+            }));
+            nodes.sort((a, b) => a.id - b.id);
+
+            edges = [
+                [0, 1, '1j'], [1, 3, '1j'], [3, 4, '1j'], [4, 2, '1j'], [2, 0, '1j'], 
+                [5, 0, '1'],  [5, 1, '1'],  [5, 2, '1'],  [5, 4, '1'],  [5, 3, '1'],  
+                [4, 0, '1j'], [0, 3, '1j'], [2, 1, '1j'], [1, 4, '1j'], [3, 2, '1j']  
+            ];
+
+            StartNodes = []; 
+            render();
+            setMode('SetStart'); 
+            alert("Loaded Custom 6-Node Pentagon.\nPLEASE CLICK ONE OR MORE NODES to select the Start State(s).");
+            updateStatus("Mode: Custom Graph. Select Start Node(s).");
         }
 
         // --- Complex Number Utilities ---
